@@ -265,5 +265,92 @@ namespace Optimizer.UI
                 ResultText.Text = success ? "✅ Operación completada" : "❌ Operación fallida";
             });
         }
+
+        // --- Nuevos handlers añadidos: Seleccionar todo & Botón rápido de limpieza (Quick Clean)
+        private void ChkSelectAll_Checked(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Marcar las casillas contempladas por "Seleccionar todo"
+                ChkWindowsTemp.IsChecked = true;
+                ChkWindowsTmp.IsChecked = true;
+                ChkPerformance.IsChecked = true;
+
+                // Si existen más checkboxes, añadirlas aquí
+                // ChkOtraOpc.IsChecked = true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al seleccionar todo: {ex.Message}");
+            }
+        }
+
+        private void ChkSelectAll_Unchecked(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                ChkWindowsTemp.IsChecked = false;
+                ChkWindowsTmp.IsChecked = false;
+                ChkPerformance.IsChecked = false;
+
+                // Desmarcar más opciones si corresponde
+                // ChkOtraOpc.IsChecked = false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al desmarcar todo: {ex.Message}");
+            }
+        }
+
+        private async void BtnQuickClean_Click(object sender, RoutedEventArgs e)
+        {
+            // Por seguridad, dejar confirmación por defecto — retirar el MessageBox si quieres SIN confirmación
+            if (MessageBox.Show("¿Borrar archivos temporales seleccionados ahora?",
+                                "Confirmar",
+                                MessageBoxButton.YesNo,
+                                MessageBoxImage.Question) != MessageBoxResult.Yes)
+                return;
+
+            // Desactivar botón si existe
+            try
+            {
+                if (BtnQuickClean != null) BtnQuickClean.IsEnabled = false;
+            }
+            catch { }
+
+            try
+            {
+                await System.Threading.Tasks.Task.Run(() =>
+                {
+                    int totalDeleted = 0;
+
+                    if ((bool)(ChkWindowsTemp?.IsChecked ?? false))
+                        totalDeleted += _tempCleaner.CleanWindowsTemp();
+
+                    if ((bool)(ChkWindowsTmp?.IsChecked ?? false))
+                        totalDeleted += _tempCleaner.CleanWindowsTmp();
+
+                    // otras limpiezas...
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        CleanupProgress.Value = 100;
+                        CleanupStatus.Text = $"✅ Completado. {totalDeleted} archivos eliminados.";
+                    });
+                });
+            }
+            catch (Exception ex)
+            {
+                Dispatcher.Invoke(() => CleanupStatus.Text = $"❌ Error: {ex.Message}");
+            }
+            finally
+            {
+                try
+                {
+                    if (BtnQuickClean != null) BtnQuickClean.IsEnabled = true;
+                }
+                catch { }
+            }
+        }
     }
 }
